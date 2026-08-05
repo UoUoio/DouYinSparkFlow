@@ -139,7 +139,8 @@ def scroll_and_select_user(page, username, targets):
                         logger.debug(
                             f"账号 {username} 选中目标好友 {targetName} (ShortId: {targetSymbol}) 准备开始交互"
                         )
-                    yield targetName
+                    # [容错] 同时把 targetSymbol 交给调用方，方便按 targets 里的原始标识追踪发送结果、发起补偿重试
+                    yield targetSymbol, targetName
                     
                     # [修改] 标记已找到，如果全找到了直接退出
                     if targetSymbol in remaining_targets:
@@ -214,62 +215,140 @@ def scroll_and_select_user(page, username, targets):
                 break
 
 
-def do_user_task(browser, username, cookies, targets):
+def do_user_task(browser, username, cookies, targets, unique_id=None):
+        record_key = unique_id or username
+        # results: {targetSymbol: {"name":, "status":, "error":}}，用 dict 而非 list 保存，
+        # 这样账号级补偿重试重复调用本函数时可以直接按 targetSymbol 覆盖旧记录，不会产生重复项
+        results = complates.setdefault(record_key, {})
+
         context = browser.new_context()  # 每个任务使用独立的上下文
         context.set_default_navigation_timeout(config["browserTimeout"])  # 设置导航超时时间为 120 秒
         context.set_default_timeout(config["browserTimeout"])  # 设置所有操作的默认超时时间为 120 秒
 
         page = context.new_page()
-        
-        if matchMode == "short_id":  # 使用抖音号进行匹配
-            page.on("response", handle_response)
-        
-        # 打开抖音创作者中心
-        retry_operation(
-            "打开抖音创作者中心",
-            page.goto,
-            retries=config["taskRetryTimes"],
-            delay=5,
-            url="https://creator.douyin.com/",
-        )
-        # 注入 Cookie
-        context.add_cookies(cookies)
 
-        # 导航到消息页面
-        retry_operation(
-            "导航到消息页面",
-            page.goto,
-            retries=config["taskRetryTimes"],
-            delay=5,
-            url="https://creator.douyin.com/creator-micro/data/following/chat",
-        )
+        def _attempt_targets(target_list):
+            """对给定好友列表尝试发送一轮消息，返回 {targetSymbol: {"name":, "status":, "error":}}"""
+            status_map = {}
+            for target_symbol, target_name in scroll_and_select_user(page, username, target_list):
+                # [容错] 单个好友发送失败不应影响其余好友，捕获异常后记录并继续下一个
+                try:
+                    logger.debug(f"账号 {username} 已选中好友 {target_name} 发送消息")
+                    # 等待聊天输入框元素加载完成，使用更稳定的属性选择器
+                    chat_input_selector = "xpath=//div[contains(@class, 'chat-input-')]"
+                    page.wait_for_selector(chat_input_selector, timeout=config["browserTimeout"])
+                    chat_input = page.locator(chat_input_selector)
 
-        logger.debug(f"账号 {username} 开始发送消息")
-        # 滚动并选择用户
-        for username in scroll_and_select_user(page, username, targets):
-            logger.debug(f"账号 {username} 已选中好友 {username} 发送消息")
-            # 等待聊天输入框元素加载完成，使用更稳定的属性选择器
-            chat_input_selector = "xpath=//div[contains(@class, 'chat-input-')]"
-            page.wait_for_selector(chat_input_selector, timeout=config["browserTimeout"])
-            chat_input = page.locator(chat_input_selector)
+                    message = build_message()
+                    lines = message.split("\\n")
 
-            # 在 chat-input-dccKiL 中输入内容
-            message = build_message()
-            for line in message.split("\\n"):
-                chat_input.type(line)  # 输入每一行
-                # 如果不是最后一行，模拟 Shift+Enter 插入换行
-                if line != message.split("\\n")[-1]:
-                    chat_input.press("Shift+Enter")  # 模拟 Shift+Enter 插入换行
+                    def _send_message():
+                        # 先清空输入框，避免重试时把上一次未发送成功的内容重复拼接进去
+                        chat_input.fill("")
+                        # 在 chat-input-dccKiL 中输入内容
+                        for index, line in enumerate(lines):
+                            chat_input.type(line)  # 输入每一行
+                            # 如果不是最后一行，模拟 Shift+Enter 插入换行
+                            if index != len(lines) - 1:
+                                chat_input.press("Shift+Enter")  # 模拟 Shift+Enter 插入换行
+                        # 模拟按下回车键发送消息
+                        chat_input.press("Enter")
 
-            logger.debug(
-                f"账号 {username} 准备发送消息给好友 {username}：\n\t{message}"
+                    logger.debug(
+                        f"账号 {username} 准备发送消息给好友 {target_name}：\n\t{message}"
+                    )
+                    # [容错] 发送过程本身也走重试逻辑，应对偶发的元素未就绪等瞬时错误
+                    retry_operation(
+                        f"账号 {username} 给好友 {target_name} 发送消息",
+                        _send_message,
+                        retries=config["taskRetryTimes"],
+                        delay=config["sendInterval"],
+                    )
+
+                    logger.info(f"账号 {username} 给好友 {target_name} 发送消息成功")
+                    status_map[target_symbol] = {"name": target_name, "status": "success"}
+                except Exception as e:
+                    logger.error(
+                        f"账号 {username} 给好友 {target_name} 发送消息失败，错误：{e}"
+                    )
+                    status_map[target_symbol] = {
+                        "name": target_name,
+                        "status": "failed",
+                        "error": str(e),
+                    }
+                finally:
+                    # [频率限制] 无论成功失败，发送后都按配置的间隔等待，避免触发风控
+                    time.sleep(config["sendInterval"])
+            return status_map
+
+        try:
+            if matchMode == "short_id":  # 使用抖音号进行匹配
+                page.on("response", handle_response)
+
+            # 打开抖音创作者中心
+            retry_operation(
+                "打开抖音创作者中心",
+                page.goto,
+                retries=config["taskRetryTimes"],
+                delay=5,
+                url="https://creator.douyin.com/",
             )
-            logger.debug(f"账号 {username} 给好友 {username} 发送消息完成")
-            # 模拟按下回车键发送消息
-            chat_input.press("Enter")
-            time.sleep(2)  # 发送完等待一会儿
+            # 注入 Cookie
+            context.add_cookies(cookies)
 
-        context.close()  # 任务完成后关闭上下文
+            # 导航到消息页面
+            retry_operation(
+                "导航到消息页面",
+                page.goto,
+                retries=config["taskRetryTimes"],
+                delay=5,
+                url="https://creator.douyin.com/creator-micro/data/following/chat",
+            )
+
+            logger.debug(f"账号 {username} 开始发送消息")
+
+            # [容错补偿] 好友维度的补偿重试：一轮扫描后仍失败、或压根没在好友列表里扫到的好友，
+            # 会在接下来的几轮里重新扫描好友列表、重新尝试发送，而不是扫一遍找不到就直接放弃
+            target_status = {}
+            pending_targets = list(dict.fromkeys(targets))  # 去重并保留原始顺序
+            max_rounds = max(1, config["taskRetryTimes"])
+            for round_index in range(1, max_rounds + 1):
+                if not pending_targets:
+                    break
+                if round_index > 1:
+                    logger.warning(
+                        f"账号 {username} 第 {round_index}/{max_rounds} 轮补偿重试，待处理好友: {pending_targets}"
+                    )
+                round_status = _attempt_targets(pending_targets)
+                target_status.update(round_status)
+                # 本轮仍失败、或没在列表里扫到（不在 round_status 里）的好友，进入下一轮
+                pending_targets = [
+                    t for t in pending_targets
+                    if round_status.get(t, {}).get("status") != "success"
+                ]
+
+            # 补偿轮次用尽后仍处理不了的好友，明确记为失败，避免被静默丢弃
+            for target in pending_targets:
+                target_status.setdefault(
+                    target,
+                    {
+                        "name": target,
+                        "status": "failed",
+                        "error": "多轮尝试后仍未在好友列表中找到该好友",
+                    },
+                )
+
+            # 按 targetSymbol 覆盖写入，账号级补偿重试重新调用本函数时会用新结果替换旧的失败记录
+            for symbol, info in target_status.items():
+                results[symbol] = info
+
+            failed_targets = [info["name"] for info in results.values() if info["status"] == "failed"]
+            if failed_targets:
+                logger.warning(
+                    f"账号 {username} 经过最多 {max_rounds} 轮尝试，以下好友仍发送失败: {failed_targets}"
+                )
+        finally:
+            context.close()  # 任务完成后关闭上下文（无论任务是否成功都要释放资源）
 
 
 def runTasks():
@@ -284,19 +363,82 @@ def runTasks():
         for user in userData:
             logger.debug(f"用户: {user.get('username', '未知用户')}, 目标好友: {user['targets']}")
 
+        # [容错补偿] 账号级补偿重试：每一轮只重新处理"该账号里还没发送成功"的好友，
+        # 已经成功的好友不会被再次选中发送，避免重复发消息
+        max_account_rounds = max(1, config["taskRetryTimes"])
+        pending_users = list(userData)
+
+        for round_index in range(1, max_account_rounds + 1):
+            if not pending_users:
+                break
+            if round_index > 1:
+                logger.warning(
+                    f"进行第 {round_index}/{max_account_rounds} 轮账号级补偿重试，"
+                    f"待处理账号: {[u.get('username', '未知用户') for u in pending_users]}"
+                )
+
+            next_pending = []
+            for user in pending_users:
+                cookies = user["cookies"]
+                unique_id = user["unique_id"]
+                username = user.get("username", "未知用户")
+
+                if round_index == 1:
+                    complates[unique_id] = {}  # 初始化该账号的发送结果记录
+                    targets_to_send = user["targets"]
+                    logger.info(f"开始处理账号 {username}")
+                else:
+                    prior_status = complates.get(unique_id, {})
+                    # 只挑出还没成功的好友重试，已成功的不再发送
+                    targets_to_send = [
+                        t for t in user["targets"]
+                        if prior_status.get(t, {}).get("status") != "success"
+                    ]
+                    if not targets_to_send:
+                        continue
+                    logger.info(
+                        f"账号 {username} 补偿重试第 {round_index} 轮，仅重试未发送成功的好友: {targets_to_send}"
+                    )
+
+                try:
+                    # 创建任务
+                    do_user_task(browser, username, cookies, targets_to_send, unique_id)
+                    logger.info(f"账号 {username} 任务完成")
+                except Exception as e:
+                    # 单个账号发生未预期的异常不应中断整批任务，记录后继续处理下一个账号
+                    logger.error(f"账号 {username} 任务异常终止，错误：{e}")
+                    traceback.print_exc()
+
+                status_after = complates.get(unique_id, {})
+                remaining_failed = [
+                    t for t in user["targets"]
+                    if status_after.get(t, {}).get("status") != "success"
+                ]
+                if remaining_failed and round_index < max_account_rounds:
+                    next_pending.append(user)
+
+            pending_users = next_pending
+
+        # 汇总本次运行结果，便于排查哪些账号/好友最终仍未发送成功
+        failed_accounts = []
         for user in userData:
-            cookies = user["cookies"]
-            targets = user["targets"]
-            complates[user["unique_id"]] = []  # 初始化该用户的已完成列表
+            unique_id = user["unique_id"]
             username = user.get("username", "未知用户")
-            logger.info(f"开始处理账号 {username}")
-            # 创建任务
-            do_user_task(browser, username, cookies, targets)
-            logger.info(f"账号 {username} 任务完成")
+            status = complates.get(unique_id, {})
+            failed_targets = [
+                t for t in user["targets"] if status.get(t, {}).get("status") != "success"
+            ]
+            if failed_targets:
+                logger.warning(
+                    f"账号 {username} 经过最多 {max_account_rounds} 轮补偿重试，以下好友最终仍未发送成功: {failed_targets}"
+                )
+                failed_accounts.append(username)
+        if failed_accounts:
+            logger.warning(f"以下账号存在未能成功发送的好友: {failed_accounts}")
     finally:
         # 关闭浏览器实例
         browser.close()
-        
+
         playwright.stop()
 
         

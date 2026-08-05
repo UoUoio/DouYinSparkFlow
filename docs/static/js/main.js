@@ -49,6 +49,7 @@ const app = createApp({
       BROWSER_TIMEOUT: 120000,
       FRIEND_LIST_WAIT_TIME: 2000,
       TASK_RETRY_TIMES: 3,
+      SEND_INTERVAL: 5,
       LOG_LEVEL: "Info",
       ACCOUNTS: [
         {
@@ -69,6 +70,7 @@ const app = createApp({
         BROWSER_TIMEOUT: form.BROWSER_TIMEOUT,
         FRIEND_LIST_WAIT_TIME: form.FRIEND_LIST_WAIT_TIME,
         TASK_RETRY_TIMES: form.TASK_RETRY_TIMES,
+        SEND_INTERVAL: form.SEND_INTERVAL,
         LOG_LEVEL: form.LOG_LEVEL,
         TASKS: form.ACCOUNTS.map((account) => ({
           username: account.username,
