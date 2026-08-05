@@ -1,6 +1,7 @@
 .venv/
 **/__pycache__/
 .vscode/
+.idea/
 chrome/
 logs/
 .DS_Store
