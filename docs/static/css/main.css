@@ -79,8 +79,91 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
+.account-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #e4e7ed;
+}
+
+/* Element Plus 默认把校验错误文案 absolute 定位、不占布局空间，
+   会跟紧随其后的 .field-hint 说明文字重叠，这里让它正常占位，
+   校验出错时把下面的说明文字自然往下推开 */
+.account-config-form .el-form-item__error {
+    position: static;
+    margin-top: 2px;
+}
+
 .account-config-form .action {
     display: flex;
     justify-content: center;
     gap: 20px;
+}
+
+.section-desc {
+    color: #606266;
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: center;
+    margin: -6px 0 16px;
+}
+
+.section-desc a,
+.field-hint a {
+    color: #409eff;
+    text-decoration: none;
+}
+
+.section-desc a:hover,
+.field-hint a:hover {
+    text-decoration: underline;
+}
+
+.field-hint {
+    color: #909399;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: -14px 0 18px;
+}
+
+.field-hint code {
+    background: #f0f2f5;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+}
+
+.button-legend {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    background: #f7f8fa;
+    border-radius: 6px;
+    color: #606266;
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.callout-warning {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    background: #fdf6ec;
+    border: 1px solid #f5dab1;
+    border-radius: 6px;
+    color: #b88230;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.callout-warning code {
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+}
+
+.env-file-action {
+    margin-top: 10px;
 }

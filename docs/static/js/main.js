@@ -86,6 +86,56 @@ const app = createApp({
 
     const configBundleJson = computed(() => JSON.stringify(configBundle.value));
 
+    // 每个账户表单的必填校验规则：抖音号、Cookies、目标好友缺一不可，
+    // 否则生成的配置会缺账号标识/登录凭证/发送对象，后端会直接跳过这个账户
+    const accountRules = {
+      unique_id: [
+        { required: true, message: "必填：这个账号自己的抖音号", trigger: "blur" },
+      ],
+      cookies: [
+        { required: true, message: "必填：粘贴 Cookies（JSON 格式）", trigger: "blur" },
+      ],
+      targets: [
+        {
+          required: true,
+          type: "array",
+          min: 1,
+          message: "必填：至少添加一个目标好友",
+          trigger: "change",
+        },
+      ],
+    };
+
+    // 收集每个账户表单的实例，用于按需触发校验
+    const accountFormRefs = ref([]);
+    const setAccountFormRef = (el, index) => {
+      accountFormRefs.value[index] = el;
+    };
+
+    // 校验单个账户表单，校验不通过时把错误提示显示在对应字段下面
+    const validateAccountForm = (index) => {
+      const formRef = accountFormRefs.value[index];
+      if (!formRef) return Promise.resolve(true);
+      return formRef
+        .validate()
+        .then(() => true)
+        .catch(() => false);
+    };
+
+    // 依次校验所有已添加的账户，任何一个不通过就提示具体是哪个账户、并中止后续操作
+    const validateAllAccounts = async () => {
+      for (let i = 0; i < form.ACCOUNTS.length; i++) {
+        const ok = await validateAccountForm(i);
+        if (!ok) {
+          ElementPlus.ElMessage.warning(
+            `请先完整填写"账户 ${i + 1}"的必填项（抖音号 / Cookies / 目标好友）`
+          );
+          return false;
+        }
+      }
+      return true;
+    };
+
     const copyValue = (value) => {
       if (typeof value === "object") {
         value = JSON.stringify(value);
@@ -109,7 +159,8 @@ const app = createApp({
       return btoa(unescape(encodeURIComponent(str)));
     };
 
-    const copyEnvFile = () => {
+    const copyEnvFile = async () => {
+      if (!(await validateAllAccounts())) return;
       // .env 用 CONFIG_JSON_B64（base64 编码），而不是把原始 JSON 直接放进 .env：
       // .env 由 python-dotenv 按 KEY=VALUE 逐行解析，JSON 里常见的 # （比如消息模板/
       // 好友昵称里的 "#话题#"）会被当成行内注释截断，用引号包裹又可能被 JSON 内部出现
@@ -123,6 +174,19 @@ const app = createApp({
           ElementPlus.ElMessage.error("复制失败: " + err);
         }
       );
+    };
+
+    // "变量值"/"查看详情"按钮用的是 CONFIG_JSON 的实际内容，点之前先校验必填项，
+    // 避免复制出一份缺账号信息的配置；"变量名"按钮复制的是固定字符串 "CONFIG_JSON"，
+    // 跟账户数据无关，不需要校验
+    const copyConfigValue = async () => {
+      if (!(await validateAllAccounts())) return;
+      copyValue(configBundleJson.value);
+    };
+
+    const showConfigDetails = async () => {
+      if (!(await validateAllAccounts())) return;
+      openEnvDetails("CONFIG_JSON", configBundle.value);
     };
 
     const openEnvDetails = (name, value) => {
@@ -149,7 +213,15 @@ const app = createApp({
       );
     };
 
-    const addAccount = () => {
+    const addAccount = async () => {
+      // 必须先把当前最后一个账户的必填项填完，才允许新增下一个账户
+      const lastIndex = form.ACCOUNTS.length - 1;
+      if (!(await validateAccountForm(lastIndex))) {
+        ElementPlus.ElMessage.warning(
+          `请先完整填写"账户 ${lastIndex + 1}"的必填项（抖音号 / Cookies / 目标好友），再添加下一个账户`
+        );
+        return;
+      }
       form.ACCOUNTS.push({
         username: "",
         unique_id: "",
@@ -160,6 +232,7 @@ const app = createApp({
 
     const removeAccount = (index) => {
       form.ACCOUNTS.splice(index, 1);
+      accountFormRefs.value.splice(index, 1);
     };
 
     return {
@@ -167,9 +240,13 @@ const app = createApp({
       log_level_options,
       message,
       form,
+      accountRules,
+      setAccountFormRef,
       configBundle,
       configBundleJson,
       copyValue,
+      copyConfigValue,
+      showConfigDetails,
       copyEnvFile,
       openEnvDetails,
       addAccount,

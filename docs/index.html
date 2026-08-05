@@ -25,81 +25,6 @@
                 </div>
             </el-header>
             <el-container style="height: calc(100% - 100px);">
-                <el-aside width="550px">
-                    <div>
-                        <el-card id="environment-secrets">
-                            <template #header>
-                                <div class="card-header">
-                                    <span>Environment Secret（只需新增这一个）</span>
-                                </div>
-                            </template>
-                            <p style="margin: 0 0 12px; color: #909399; font-size: 13px; line-height: 1.6;">
-                                所有配置（含每个账号的 cookies）已打包成一个 JSON。GitHub 仓库的
-                                <code>user-data</code> Environment 里只需新增名为
-                                <code>CONFIG_JSON</code> 的 Secret，把下面的值粘贴进去即可，不用再逐条添加变量。
-                            </p>
-                            <div class="config-item">
-                                <span class="label">CONFIG_JSON</span>
-                                <div class="action">
-                                    <el-button-group>
-                                        <el-button size="small" @click="copyValue('CONFIG_JSON')">
-                                            <template #icon>
-                                                <i class="icon"><svg t="1775398168345" class="icon"
-                                                        viewBox="0 0 1024 1024" version="1.1"
-                                                        xmlns="http://www.w3.org/2000/svg" p-id="12394" width="256"
-                                                        height="256">
-                                                        <path
-                                                            d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
-                                                            fill="#5F6A7A" p-id="12395"></path>
-                                                    </svg></i>
-                                            </template>
-                                            变量名
-                                        </el-button>
-                                        <el-button size="small" @click="copyValue(configBundleJson)">
-                                            <template #icon>
-                                                <i class="icon"><svg t="1775398168345" class="icon"
-                                                        viewBox="0 0 1024 1024" version="1.1"
-                                                        xmlns="http://www.w3.org/2000/svg" p-id="12394" width="256"
-                                                        height="256">
-                                                        <path
-                                                            d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
-                                                            fill="#5F6A7A" p-id="12395"></path>
-                                                    </svg></i>
-                                            </template>
-                                            变量值
-                                        </el-button>
-                                        <el-button size="small" @click="openEnvDetails('CONFIG_JSON', configBundle)">
-                                            <template #icon>
-                                                <i class="icon"><svg t="1775398487803" class="icon"
-                                                        viewBox="0 0 1024 1024" version="1.1"
-                                                        xmlns="http://www.w3.org/2000/svg" p-id="15338" width="256"
-                                                        height="256">
-                                                        <path
-                                                            d="M600.96 677.92a329.12 329.12 0 1 0-94.08 68.16L606.72 880a58.4 58.4 0 0 0 93.6-69.76zM112 449.12a252.16 252.16 0 1 1 252.64 251.52A252.48 252.48 0 0 1 112 449.12z m829.76-187.68a39.04 39.04 0 0 0 0-77.6H743.2a39.04 39.04 0 0 0 0 77.6h198.56z m41.76 181.76a38.72 38.72 0 0 0-27.52-11.2H790.56a39.04 39.04 0 0 0 0 77.6h165.44a38.56 38.56 0 0 0 38.72-38.4 39.36 39.36 0 0 0-11.2-27.52z m-115.2 236.32a39.04 39.04 0 0 0 0 77.6h82.4a39.04 39.04 0 1 0 7.84-77.6 32 32 0 0 0-7.84 0z"
-                                                            fill="#4592D8" p-id="15339"></path>
-                                                    </svg></i>
-                                            </template>
-                                            查看详情
-                                        </el-button>
-                                    </el-button-group>
-                                </div>
-                            </div>
-                        </el-card>
-
-                        <el-button style="width: 100%;" @click="copyEnvFile()">
-                            <template #icon>
-                                <i class="icon"><svg t="1775398168345" class="icon" viewBox="0 0 1024 1024"
-                                        version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="12394" width="256"
-                                        height="256">
-                                        <path
-                                            d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
-                                            fill="#5F6A7A" p-id="12395"></path>
-                                    </svg></i>
-                            </template>
-                            复制 .env 配置文件
-                        </el-button>
-                    </div>
-                </el-aside>
                 <el-main>
                     <div class="main">
                         <div class="base-config-form">
@@ -131,6 +56,9 @@
                                 <el-form-item label="账号匹配模式">
                                     <el-select v-model="form.MATCH_MODE" :options="match_mode_options" />
                                 </el-form-item>
+                                <div class="field-hint">
+                                    决定下方"账户配置"里『目标好友』要填昵称还是抖音号：选『昵称』就填好友的原始昵称，选『抖音号』就填好友的抖音号（可以在好友改名后仍然锁定对方，功能测试中）。
+                                </div>
                                 <el-form-item label="浏览器操作最长等待时间">
                                     <el-input-number v-model="form.BROWSER_TIMEOUT" :step="1000" :precision="0"
                                         :min="5000" :max="300000" />
@@ -156,20 +84,45 @@
                             <div class="section-header">
                                 <span class="text-large font-600">账户配置</span>
                             </div>
+                            <p class="section-desc">
+                                一个"账户"对应一个已登录的抖音创作者账号：程序用它的身份登录后，给这里配置的"目标好友"发送消息。可以添加多个账户，互不影响。不清楚下面几项去哪儿找？
+                            </p>
                             <div class="account-item" v-for="(account, index) in form.ACCOUNTS" :key="index">
-                                <el-form :model="form" label-width="auto" style="max-width: 600px">
+                                <div class="account-item-header">
+                                    <span class="font-600">账户 {{ index + 1 }}</span>
+                                    <el-button type="danger" size="small" v-if="form.ACCOUNTS.length > 1"
+                                        @click="removeAccount(index)">移除此账户</el-button>
+                                </div>
+                                <el-form :model="account" :rules="accountRules"
+                                    :ref="(el) => setAccountFormRef(el, index)" label-width="auto"
+                                    style="max-width: 600px">
                                     <el-form-item label="用户名">
-                                        <el-input v-model="account.username" />
+                                        <el-input v-model="account.username" placeholder="例如：小明的小号（随便填，仅用于日志里区分账号）" />
                                     </el-form-item>
-                                    <el-form-item label="抖音号">
-                                        <el-input v-model="account.unique_id" />
+                                    <div class="field-hint">仅用于运行日志中区分账号，不影响实际发送逻辑，随意填写即可。</div>
+
+                                    <el-form-item label="抖音号" prop="unique_id">
+                                        <el-input v-model="account.unique_id" placeholder="例如：douyin_xiaoming01" />
                                     </el-form-item>
-                                    <el-form-item label="Cookies【JSON格式】">
-                                        <el-input v-model="account.cookies" :rows="4" type="textarea" />
+                                    <div class="field-hint">
+                                        必填，填<strong>这个账号自己</strong>的抖音号（不是下面要加的好友的抖音号，不是昵称，不能留空），作为这个账号的唯一标识。用这个账号登录<a
+                                            href="https://creator.douyin.com/" target="_blank"
+                                            rel="noopener">抖音创作者中心</a>后可以在个人主页查看，具体见上方教程。
+                                    </div>
+
+                                    <el-form-item label="Cookies【JSON格式】" prop="cookies">
+                                        <el-input v-model="account.cookies" :rows="4" type="textarea"
+                                            placeholder='粘贴 Cookie-Editor 导出的 JSON 数组，形如：[{"name":"...","value":"...","domain":"..."}]' />
                                     </el-form-item>
-                                    <el-form-item label="目标好友（回车）">
+                                    <div class="field-hint">
+                                        登录抖音创作者中心后，保持该页面打开，用 <a href="https://cookie-editor.com/"
+                                            target="_blank" rel="noopener">Cookie-Editor</a> 浏览器插件导出 JSON
+                                        格式的 Cookies 并粘贴到这里，具体见上方教程。这一步不会把 Cookies 上传到任何服务器，全程只在你本地浏览器里处理。
+                                    </div>
+
+                                    <el-form-item label="目标好友（回车）" prop="targets">
                                         <el-input-tag v-model="account.targets" :tag-type="info" :tag-effect="plain"
-                                            placeholder="Please input">
+                                            placeholder="输入好友昵称或抖音号后按回车添加，可添加多个">
                                             <template #tag="{ value }">
                                                 <div class="flex items-center">
                                                     <span>{{ value }}</span>
@@ -177,9 +130,9 @@
                                             </template>
                                         </el-input-tag>
                                     </el-form-item>
-                                    <el-button type="danger"
-                                        :style="{ width: '100%', margin: '20px auto' , display: form.ACCOUNTS.length <= 1 ? 'none' : 'block'}"
-                                        @click="removeAccount(index)">移除</el-button>
+                                    <div class="field-hint">
+                                        根据上方"基础配置"里的『账号匹配模式』填写：选『昵称』就填好友的原始昵称【不能是备注名】；选『抖音号』就填好友的抖音号。每输入一个按一次回车确认，可添加多个，具体见上方教程。
+                                    </div>
                                 </el-form>
 
                             </div>
@@ -205,6 +158,103 @@
                         </div>
                     </div>
                 </el-main>
+                <el-aside width="550px">
+                    <div>
+                        <el-card id="environment-secrets">
+                            <template #header>
+                                <div class="card-header">
+                                    <span>Environment Secret（只需新增这一个）</span>
+                                </div>
+                            </template>
+                            <p style="margin: 0 0 12px; color: #909399; font-size: 13px; line-height: 1.6;">
+                                左侧填完后，所有配置（含每个账号的 cookies）已打包成一个 JSON。进入 GitHub 仓库
+                                <code>Settings → Environments → user-data</code>（没有 <code>user-data</code> 这个
+                                Environment 就先新建一个），在里面的 <code>Environment secrets</code> 区块点
+                                <code>Add secret</code>，新增名为 <code>CONFIG_JSON</code> 的 <strong>Secret</strong>（不是
+                                Variable），把下面的值粘贴进去即可，不用再逐条添加变量。
+                            </p>
+                            <p class="callout-warning">
+                                ⚠️ 注意别走错地方：仓库里还有一个 <code>Settings → Secrets and variables → Actions</code>
+                                页面，那里是 <code>Secrets</code> / <code>Variables</code> 两个并列 tab、创建按钮叫
+                                <code>New repository secret</code>——<strong>那不是这里要去的地方</strong>。一定要先点进
+                                <code>Environments → user-data</code> 里面，才能看到 <code>Environment secrets</code> 这个专属区块。
+                            </p>
+                            <div class="config-item">
+                                <span class="label">CONFIG_JSON</span>
+                                <div class="action">
+                                    <el-button-group>
+                                        <el-button size="small" @click="copyValue('CONFIG_JSON')">
+                                            <template #icon>
+                                                <i class="icon"><svg t="1775398168345" class="icon"
+                                                        viewBox="0 0 1024 1024" version="1.1"
+                                                        xmlns="http://www.w3.org/2000/svg" p-id="12394" width="256"
+                                                        height="256">
+                                                        <path
+                                                            d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
+                                                            fill="#5F6A7A" p-id="12395"></path>
+                                                    </svg></i>
+                                            </template>
+                                            变量名
+                                        </el-button>
+                                        <el-button size="small" @click="copyConfigValue">
+                                            <template #icon>
+                                                <i class="icon"><svg t="1775398168345" class="icon"
+                                                        viewBox="0 0 1024 1024" version="1.1"
+                                                        xmlns="http://www.w3.org/2000/svg" p-id="12394" width="256"
+                                                        height="256">
+                                                        <path
+                                                            d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
+                                                            fill="#5F6A7A" p-id="12395"></path>
+                                                    </svg></i>
+                                            </template>
+                                            变量值
+                                        </el-button>
+                                        <el-button size="small" @click="showConfigDetails">
+                                            <template #icon>
+                                                <i class="icon"><svg t="1775398487803" class="icon"
+                                                        viewBox="0 0 1024 1024" version="1.1"
+                                                        xmlns="http://www.w3.org/2000/svg" p-id="15338" width="256"
+                                                        height="256">
+                                                        <path
+                                                            d="M600.96 677.92a329.12 329.12 0 1 0-94.08 68.16L606.72 880a58.4 58.4 0 0 0 93.6-69.76zM112 449.12a252.16 252.16 0 1 1 252.64 251.52A252.48 252.48 0 0 1 112 449.12z m829.76-187.68a39.04 39.04 0 0 0 0-77.6H743.2a39.04 39.04 0 0 0 0 77.6h198.56z m41.76 181.76a38.72 38.72 0 0 0-27.52-11.2H790.56a39.04 39.04 0 0 0 0 77.6h165.44a38.56 38.56 0 0 0 38.72-38.4 39.36 39.36 0 0 0-11.2-27.52z m-115.2 236.32a39.04 39.04 0 0 0 0 77.6h82.4a39.04 39.04 0 1 0 7.84-77.6 32 32 0 0 0-7.84 0z"
+                                                            fill="#4592D8" p-id="15339"></path>
+                                                    </svg></i>
+                                            </template>
+                                            查看详情
+                                        </el-button>
+                                    </el-button-group>
+                                </div>
+                            </div>
+                            <ul class="button-legend">
+                                <li><strong>变量名</strong>：复制 "CONFIG_JSON" 这几个字，粘贴到 GitHub Secret 的 <em>Name</em>
+                                    输入框。</li>
+                                <li><strong>变量值</strong>：复制配置内容本身（最常用），粘贴到 GitHub Secret 的 <em>Value</em> 输入框。
+                                </li>
+                                <li><strong>查看详情</strong>：只弹窗预览格式化后的完整配置，方便核对有没有填错，<u>不会</u>复制任何内容。</li>
+                            </ul>
+                        </el-card>
+
+                        <div class="env-file-action">
+                            <el-button style="width: 100%;" @click="copyEnvFile()">
+                                <template #icon>
+                                    <i class="icon"><svg t="1775398168345" class="icon" viewBox="0 0 1024 1024"
+                                            version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="12394" width="256"
+                                            height="256">
+                                            <path
+                                                d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
+                                                fill="#5F6A7A" p-id="12395"></path>
+                                        </svg></i>
+                                </template>
+                                复制 .env 配置文件
+                            </el-button>
+                            <p class="field-hint" style="margin: 6px 0 0;">
+                                用于<strong>本地自部署</strong>（而不是 GitHub）：复制一整行
+                                <code>CONFIG_JSON_B64=...</code>，直接粘贴进项目根目录的 <code>.env</code>
+                                文件即可，不需要去 GitHub 配置 Secret。GitHub Actions 部署请用上面的"变量名 / 变量值"。
+                            </p>
+                        </div>
+                    </div>
+                </el-aside>
             </el-container>
         </el-container>
     </div>

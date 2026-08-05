@@ -41,14 +41,14 @@
 
 操作步骤如下：
 
-1. 打开已经填写好的配置生成器页面，查看左侧 `Environment Secret（只需新增这一个）` 区域，点击"变量值"复制整段 JSON（已包含所有配置项和每个账号的 cookies）。
-2. 进入 GitHub 仓库的 `Settings` -> `Environments` -> `user-data` -> `Environment secrets` -> `Add secret`。
-3. Name 填 `CONFIG_JSON`，Value 粘贴刚才复制的整段 JSON，保存即可。
+1. 打开已经填写好的配置生成器页面，查看右侧 `Environment Secret（只需新增这一个）` 区域，点击"变量值"复制整段 JSON（已包含所有配置项和每个账号的 cookies）。
+2. 进入 GitHub 仓库的 `Settings` -> `Environments` -> `user-data` -> `Environment secrets` -> `Add secret`（注意不是仓库级别 `Settings -> Secrets and variables -> Actions` 页面里的 `New repository secret`，那是另一个地方）。
+3. Name 填 `CONFIG_JSON`，Value 粘贴刚才复制的整段 JSON，选 **Secret** 类型保存（CONFIG_JSON 含账号 Cookies，不能存成明文的 Variable）。
 
 注意事项：
 
 - 变量名必须是 `CONFIG_JSON`（大小写完全一致）。
-- 如果你只想单独覆盖某一项配置（比如只改日志级别），仍然可以像以前一样额外新增一个同名的独立 Variable/Secret（例如 `LOG_LEVEL`），单独设置的会优先于 `CONFIG_JSON` 里的值生效。
+- 如果你只想单独覆盖某一项配置（比如只改日志级别），仍然可以额外新增一个同名的独立 Variable/Secret（例如 `LOG_LEVEL`），单独设置的会优先于 `CONFIG_JSON` 里的值生效。
 
 ![配置生成器](images/配置生成器.png)
 
