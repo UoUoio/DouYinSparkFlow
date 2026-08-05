@@ -35,21 +35,20 @@
 
 ![创建`user-data`环境图](images/屏幕截图%202026-02-14%20224915.png)
 
-## 4. 配置 Secrets 和 Variables
+## 4. 配置 Secrets
 
-在你刚创建的 `user-data` Environment 中，分别配置 Variables 和 Secrets。
+在你刚创建的 `user-data` Environment 中，只需要新增**一个** Secret，不用再逐条配置每一项。
 
 操作步骤如下：
 
-1. 打开已经填写好的配置生成器页面，先查看左侧上方`Environment Variables` 区域。
-2. 进入 GitHub 仓库的 `Settings` -> `Environments` -> `user-data` -> `Environment variables`，逐条新增对应变量。
-3. 回到配置生成器，查看左侧下方 `Environment Secrets` 区域。
-4. 进入 GitHub 仓库的 `Settings` -> `Environments` -> `user-data` -> `Environment secrets`，逐条新增对应密钥。
+1. 打开已经填写好的配置生成器页面，查看左侧 `Environment Secret（只需新增这一个）` 区域，点击"变量值"复制整段 JSON（已包含所有配置项和每个账号的 cookies）。
+2. 进入 GitHub 仓库的 `Settings` -> `Environments` -> `user-data` -> `Environment secrets` -> `Add secret`。
+3. Name 填 `CONFIG_JSON`，Value 粘贴刚才复制的整段 JSON，保存即可。
 
 注意事项：
 
-- 变量名和变量值请与配置生成器保持完全一致（包含大小写）建议直接使用复制按钮复制粘贴。
-- 不要把 Secrets 内容填到 Variables，也不要把 Variables 内容填到 Secrets。
+- 变量名必须是 `CONFIG_JSON`（大小写完全一致）。
+- 如果你只想单独覆盖某一项配置（比如只改日志级别），仍然可以像以前一样额外新增一个同名的独立 Variable/Secret（例如 `LOG_LEVEL`），单独设置的会优先于 `CONFIG_JSON` 里的值生效。
 
 ![配置生成器](images/配置生成器.png)
 

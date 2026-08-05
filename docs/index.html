@@ -27,68 +27,22 @@
             <el-container style="height: calc(100% - 100px);">
                 <el-aside width="550px">
                     <div>
-                        <el-card id="environment-variables">
-                            <template #header>
-                                <div class="card-header">
-                                    <span>Environment Variables</span>
-                                </div>
-                            </template>
-                            <div v-for="(value, key) in environmentVariables" :key="key" class="config-item">
-                                <span class="label">{{ key }}</span>
-                                <div class="action">
-                                    <el-button-group>
-                                        <el-button size="small" @click="copyValue(key)">
-                                            <template #icon>
-                                                <i class="icon"><svg t="1775398168345" class="icon"
-                                                        viewBox="0 0 1024 1024" version="1.1"
-                                                        xmlns="http://www.w3.org/2000/svg" p-id="12394">
-                                                        <path
-                                                            d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
-                                                            fill="#5F6A7A" p-id="12395"></path>
-                                                    </svg></i>
-                                            </template>
-                                            变量名
-                                        </el-button>
-                                        <el-button size="small" @click="copyValue(value)">
-                                            <template #icon>
-                                                <i class="icon"><svg t="1775398168345" class="icon"
-                                                        viewBox="0 0 1024 1024" version="1.1"
-                                                        xmlns="http://www.w3.org/2000/svg" p-id="12394">
-                                                        <path
-                                                            d="M618.666667 277.333333a128 128 0 0 1 128 128v384a128 128 0 0 1-128 128H234.666667a128 128 0 0 1-128-128V405.333333a128 128 0 0 1 128-128z m170.666666-170.666666a128 128 0 0 1 127.914667 123.2L917.333333 234.666667v384a128 128 0 0 1-123.2 127.914666L789.333333 746.666667v-85.333334a42.666667 42.666667 0 0 0 42.56-39.466666L832 618.666667V234.666667a42.666667 42.666667 0 0 0-39.466667-42.56L789.333333 192H405.333333a42.666667 42.666667 0 0 0-42.56 39.466667L362.666667 234.666667h-85.333334a128 128 0 0 1 123.2-127.914667L405.333333 106.666667h384z"
-                                                            fill="#5F6A7A" p-id="12395"></path>
-                                                    </svg></i>
-                                            </template>
-                                            变量值
-                                        </el-button>
-                                        <el-button size="small" @click="openEnvDetails(key, value)">
-                                            <template #icon>
-                                                <i class="icon"><svg t="1775398487803" class="icon"
-                                                        viewBox="0 0 1024 1024" version="1.1"
-                                                        xmlns="http://www.w3.org/2000/svg" p-id="15338">
-                                                        <path
-                                                            d="M600.96 677.92a329.12 329.12 0 1 0-94.08 68.16L606.72 880a58.4 58.4 0 0 0 93.6-69.76zM112 449.12a252.16 252.16 0 1 1 252.64 251.52A252.48 252.48 0 0 1 112 449.12z m829.76-187.68a39.04 39.04 0 0 0 0-77.6H743.2a39.04 39.04 0 0 0 0 77.6h198.56z m41.76 181.76a38.72 38.72 0 0 0-27.52-11.2H790.56a39.04 39.04 0 0 0 0 77.6h165.44a38.56 38.56 0 0 0 38.72-38.4 39.36 39.36 0 0 0-11.2-27.52z m-115.2 236.32a39.04 39.04 0 0 0 0 77.6h82.4a39.04 39.04 0 1 0 7.84-77.6 32 32 0 0 0-7.84 0z"
-                                                            fill="#4592D8" p-id="15339"></path>
-                                                    </svg></i>
-                                            </template>
-                                            查看详情
-                                        </el-button>
-                                    </el-button-group>
-                                </div>
-                            </div>
-                        </el-card>
-
                         <el-card id="environment-secrets">
                             <template #header>
                                 <div class="card-header">
-                                    <span>Environment Secrets</span>
+                                    <span>Environment Secret（只需新增这一个）</span>
                                 </div>
                             </template>
-                            <div v-for="(value, key) in environmentSecrets" :key="key" class="config-item">
-                                <span class="label">{{ key }}</span>
+                            <p style="margin: 0 0 12px; color: #909399; font-size: 13px; line-height: 1.6;">
+                                所有配置（含每个账号的 cookies）已打包成一个 JSON。GitHub 仓库的
+                                <code>user-data</code> Environment 里只需新增名为
+                                <code>CONFIG_JSON</code> 的 Secret，把下面的值粘贴进去即可，不用再逐条添加变量。
+                            </p>
+                            <div class="config-item">
+                                <span class="label">CONFIG_JSON</span>
                                 <div class="action">
                                     <el-button-group>
-                                        <el-button size="small" @click="copyValue(key)">
+                                        <el-button size="small" @click="copyValue('CONFIG_JSON')">
                                             <template #icon>
                                                 <i class="icon"><svg t="1775398168345" class="icon"
                                                         viewBox="0 0 1024 1024" version="1.1"
@@ -101,7 +55,7 @@
                                             </template>
                                             变量名
                                         </el-button>
-                                        <el-button size="small" @click="copyValue(value)">
+                                        <el-button size="small" @click="copyValue(configBundleJson)">
                                             <template #icon>
                                                 <i class="icon"><svg t="1775398168345" class="icon"
                                                         viewBox="0 0 1024 1024" version="1.1"
@@ -114,7 +68,7 @@
                                             </template>
                                             变量值
                                         </el-button>
-                                        <el-button size="small" @click="openEnvDetails(key, value)">
+                                        <el-button size="small" @click="openEnvDetails('CONFIG_JSON', configBundle)">
                                             <template #icon>
                                                 <i class="icon"><svg t="1775398487803" class="icon"
                                                         viewBox="0 0 1024 1024" version="1.1"

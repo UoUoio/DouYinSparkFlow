@@ -61,7 +61,10 @@ const app = createApp({
       ],
     });
 
-    const environmentVariables = computed(() => {
+    // 把所有配置打包成一个 JSON 对象，对应后端的 CONFIG_JSON 环境变量：
+    // GitHub 上只需要新增这一个 Secret，不用再逐条添加 Variables/Secrets，
+    // 每个账号的 cookies 也直接内嵌在 TASKS 里，不用再单独配 COOKIES_<抖音号>
+    const configBundle = computed(() => {
       return {
         PROXY_ADDRESS: form.PROXY_ADDRESS,
         MESSAGE_TEMPLATE: form.MESSAGE_TEMPLATE,
@@ -75,17 +78,13 @@ const app = createApp({
         TASKS: form.ACCOUNTS.map((account) => ({
           username: account.username,
           unique_id: account.unique_id,
+          cookies: account.cookies,
           targets: account.targets,
         })),
       };
     });
 
-    const environmentSecrets = computed(() => {
-      return form.ACCOUNTS.reduce((acc, account, index) => {
-        acc[`COOKIES_${String(account.unique_id || "").toUpperCase()}`] = account.cookies;
-        return acc;
-      }, {});
-    });
+    const configBundleJson = computed(() => JSON.stringify(configBundle.value));
 
     const copyValue = (value) => {
       if (typeof value === "object") {
@@ -106,24 +105,8 @@ const app = createApp({
     };
 
     const copyEnvFile = () => {
-      // 合并两个对象
-      const allVars = {
-        ...environmentVariables.value,
-        ...environmentSecrets.value,
-      };
-      // 生成 .env 格式字符串
-      const item = Object.entries(allVars)
-        .map(([key, value]) => {
-          if (typeof value === "object") {
-            value = JSON.stringify(value);
-          } else if (typeof value === "number") {
-            value = value.toString();
-          } else {
-            value = value.replace(/\n/g, "\\n");
-          }
-          return `${key}=${value}`;
-        })
-        .join("\n");
+      // .env 只需要一行：CONFIG_JSON=<整段 JSON>
+      const item = `CONFIG_JSON=${configBundleJson.value.replace(/\n/g, "\\n")}`;
       navigator.clipboard.writeText(item).then(
         () => {
           ElementPlus.ElMessage.success("已复制 .env 配置文件到剪贴板");
@@ -176,8 +159,8 @@ const app = createApp({
       log_level_options,
       message,
       form,
-      environmentVariables,
-      environmentSecrets,
+      configBundle,
+      configBundleJson,
       copyValue,
       copyEnvFile,
       openEnvDetails,

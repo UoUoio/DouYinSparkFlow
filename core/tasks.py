@@ -232,6 +232,10 @@ def do_user_task(browser, username, cookies, targets, unique_id=None):
             status_map = {}
             for target_symbol, target_name in scroll_and_select_user(page, username, target_list):
                 # [容错] 单个好友发送失败不应影响其余好友，捕获异常后记录并继续下一个
+                # [容错] 每个好友一确定结果就立刻写回 results（即 complates[unique_id]），
+                # 不等整轮/整个函数跑完再统一写入——这样即使后面某个好友触发了未捕获的异常
+                # 导致函数提前中断，前面已经发送成功的好友也不会因为"结果没来得及落盘"
+                # 而在账号级补偿重试时被误判为未成功、被重复发送
                 try:
                     logger.debug(f"账号 {username} 已选中好友 {target_name} 发送消息")
                     # 等待聊天输入框元素加载完成，使用更稳定的属性选择器
@@ -277,6 +281,8 @@ def do_user_task(browser, username, cookies, targets, unique_id=None):
                         "error": str(e),
                     }
                 finally:
+                    # 立刻落盘，不依赖后续好友/后续轮次都顺利跑完
+                    results[target_symbol] = status_map[target_symbol]
                     # [频率限制] 无论成功失败，发送后都按配置的间隔等待，避免触发风控
                     time.sleep(config["sendInterval"])
             return status_map
@@ -338,7 +344,8 @@ def do_user_task(browser, username, cookies, targets, unique_id=None):
                     },
                 )
 
-            # 按 targetSymbol 覆盖写入，账号级补偿重试重新调用本函数时会用新结果替换旧的失败记录
+            # 补一次写入：_attempt_targets 内部已经逐个实时落盘了，这里主要是为了把上面
+            # "多轮后仍未找到"的兜底记录也写进 results（已写过的条目重复赋值一次，无副作用）
             for symbol, info in target_status.items():
                 results[symbol] = info
 
