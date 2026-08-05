@@ -1,5 +1,6 @@
 import os, sys
 from enum import Enum
+import base64
 import json
 import logging
 from utils.logger import setup_logger
@@ -36,17 +37,25 @@ def get_environment():
 
 def _load_config_bundle():
     """
-    读取 CONFIG_JSON 环境变量：允许把 PROXY_ADDRESS / MESSAGE_TEMPLATE / TASKS 等所有配置
-    打包成一个 JSON 对象，只在 GitHub Environment（或 .env）里配一个变量，
-    不用再一条条手动新增变量/密钥。
+    读取打包配置：允许把 PROXY_ADDRESS / MESSAGE_TEMPLATE / TASKS 等所有配置打包成一个
+    JSON 对象，只配一个变量，不用再一条条手动新增变量/密钥。
+
+    支持两种来源：
+    - CONFIG_JSON：原始 JSON 文本，用于直接粘贴进 GitHub Secret（人眼可读、方便核对）。
+    - CONFIG_JSON_B64：CONFIG_JSON 的 base64 编码，用于本地 .env 部署。原因是 .env 由
+      python-dotenv 按 KEY=VALUE 逐行解析，JSON 里常见的 # （比如消息模板/好友昵称里的
+      "#话题#"）会被当成行内注释截断内容，用引号包裹又会被 JSON 内部可能出现的单引号破坏，
+      所以本地 .env 场景统一用 base64 规避这些解析边界问题。
     """
     global _configBundle
 
     if _configBundle is not None:
         return _configBundle
 
-    raw = os.getenv("CONFIG_JSON", "")
     bundle = {}
+    raw = os.getenv("CONFIG_JSON", "")
+    raw_b64 = os.getenv("CONFIG_JSON_B64", "")
+
     if raw:
         try:
             parsed = json.loads(raw)
@@ -56,6 +65,16 @@ def _load_config_bundle():
                 logger.warning("CONFIG_JSON 不是一个 JSON 对象，已忽略")
         except json.JSONDecodeError as e:
             logger.warning(f"CONFIG_JSON 解析失败，已忽略：{e}")
+    elif raw_b64:
+        try:
+            decoded = base64.b64decode(raw_b64).decode("utf-8")
+            parsed = json.loads(decoded)
+            if isinstance(parsed, dict):
+                bundle = parsed
+            else:
+                logger.warning("CONFIG_JSON_B64 解码后不是一个 JSON 对象，已忽略")
+        except (ValueError, json.JSONDecodeError) as e:
+            logger.warning(f"CONFIG_JSON_B64 解析失败，已忽略：{e}")
 
     _configBundle = bundle
     return _configBundle

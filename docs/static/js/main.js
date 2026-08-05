@@ -104,9 +104,17 @@ const app = createApp({
       );
     };
 
+    const toBase64 = (str) => {
+      // 兼容 JSON 里的中文等非 Latin1 字符
+      return btoa(unescape(encodeURIComponent(str)));
+    };
+
     const copyEnvFile = () => {
-      // .env 只需要一行：CONFIG_JSON=<整段 JSON>
-      const item = `CONFIG_JSON=${configBundleJson.value.replace(/\n/g, "\\n")}`;
+      // .env 用 CONFIG_JSON_B64（base64 编码），而不是把原始 JSON 直接放进 .env：
+      // .env 由 python-dotenv 按 KEY=VALUE 逐行解析，JSON 里常见的 # （比如消息模板/
+      // 好友昵称里的 "#话题#"）会被当成行内注释截断，用引号包裹又可能被 JSON 内部出现
+      // 的单引号破坏，所以统一转成 base64 规避这些解析边界问题
+      const item = `CONFIG_JSON_B64=${toBase64(configBundleJson.value)}`;
       navigator.clipboard.writeText(item).then(
         () => {
           ElementPlus.ElMessage.success("已复制 .env 配置文件到剪贴板");
