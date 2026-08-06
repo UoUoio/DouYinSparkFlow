@@ -1,3 +1,4 @@
+import os
 import traceback
 from utils.logger import setup_logger
 from utils.config import get_config, get_userData
@@ -9,6 +10,10 @@ import json
 
 
 complates = {}
+
+# 发送校验失败时保存现场截图，方便排查"日志显示成功但实际没发出去"这类问题
+# 放在 logs/ 目录下，CI 里已经把整个 logs/ 目录作为 run-logs 产物上传，不用额外配置
+SCREENSHOT_DIR = os.path.join("logs", "screenshots")
 
 config = get_config()
 userData = get_userData()
@@ -62,6 +67,21 @@ def retry_operation(name, operation, retries=3, delay=2, *args, **kwargs):
             else:
                 logger.error(f"{name} 失败，已达到最大重试次数，错误：{e}")
                 raise
+
+
+def _save_failure_screenshot(page, username, target_name):
+    """发送校验失败时保存现场截图，用于排查日志和实际结果不一致的问题。截图本身失败不应影响主流程。"""
+    try:
+        os.makedirs(SCREENSHOT_DIR, exist_ok=True)
+        safe_username = "".join(c for c in username if c.isalnum() or c in ("_", "-")) or "user"
+        safe_target = "".join(c for c in target_name if c.isalnum() or c in ("_", "-")) or "target"
+        filename = f"{safe_username}_{safe_target}_{int(time.time() * 1000)}.png"
+        path = os.path.join(SCREENSHOT_DIR, filename)
+        page.screenshot(path=path)
+        return path
+    except Exception as e:
+        logger.warning(f"保存失败截图时出错（不影响主流程）：{e}")
+        return None
 
 
 def scroll_and_select_user(page, username, targets):
@@ -246,6 +266,9 @@ def do_user_task(browser, username, cookies, targets, unique_id=None):
                     message = build_message()
                     lines = message.split("\\n")
 
+                    # Semi Design（抖音创作者中心前端框架）的错误提示 toast，出现即代表本次发送被前端/服务端拒绝
+                    error_toast_selector = 'xpath=//div[contains(@class, "semi-toast-content")]'
+
                     def _send_message():
                         # 先清空输入框，避免重试时把上一次未发送成功的内容重复拼接进去
                         chat_input.fill("")
@@ -258,6 +281,22 @@ def do_user_task(browser, username, cookies, targets, unique_id=None):
                         # 模拟按下回车键发送消息
                         chat_input.press("Enter")
 
+                        # [容错] 通用发送校验：按下 Enter 不抛异常≠真的发出去了，之前的逻辑
+                        # 只要没抛异常就记成功，导致"日志显示成功但实际没收到"的情况被掩盖。
+                        # 这里补两个通用检查（不依赖具体好友/消息内容，任何账号都适用）：
+                        # 1. 发送后是否弹出了错误提示 toast（风控拦截、频率限制等场景抖音会弹提示）
+                        # 2. 输入框内容是否被清空（真正发出去后输入框会清空；没清空说明发送被拒绝或卡住）
+                        page.wait_for_timeout(800)  # 给 toast 弹出/输入框清空留出时间
+
+                        for toast in page.locator(error_toast_selector).all():
+                            toast_text = toast.inner_text().strip()
+                            if toast_text:
+                                raise RuntimeError(f"发送后检测到错误提示：{toast_text}")
+
+                        remaining_text = chat_input.inner_text().strip()
+                        if remaining_text:
+                            raise RuntimeError(f"发送后输入框未清空，疑似未真正发出，剩余内容：{remaining_text[:50]}")
+
                     logger.debug(
                         f"账号 {username} 准备发送消息给好友 {target_name}：\n\t{message}"
                     )
@@ -269,12 +308,15 @@ def do_user_task(browser, username, cookies, targets, unique_id=None):
                         delay=config["sendInterval"],
                     )
 
-                    logger.info(f"账号 {username} 给好友 {target_name} 发送消息成功")
+                    logger.info(f"账号 {username} 给好友 {target_name} 发送消息成功（已校验无错误提示且输入框已清空）")
                     status_map[target_symbol] = {"name": target_name, "status": "success"}
                 except Exception as e:
                     logger.error(
                         f"账号 {username} 给好友 {target_name} 发送消息失败，错误：{e}"
                     )
+                    screenshot_path = _save_failure_screenshot(page, username, target_name)
+                    if screenshot_path:
+                        logger.error(f"账号 {username} 给好友 {target_name} 失败现场截图已保存：{screenshot_path}")
                     status_map[target_symbol] = {
                         "name": target_name,
                         "status": "failed",
