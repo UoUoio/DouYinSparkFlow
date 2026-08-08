@@ -40,7 +40,7 @@ jobs:
     - name: Run DouYin Spark Flow
       run: python main.py
     - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
+      if: always()
       with:
         name: run-logs
         path: logs/

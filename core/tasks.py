@@ -4,7 +4,7 @@ from utils.logger import setup_logger
 from utils.config import get_config, get_userData
 from core.msg_builder import build_message, build_message_with_openai
 from core.browser import get_browser
-from playwright.sync_api import Response
+from playwright.sync_api import Response, TimeoutError as PlaywrightTimeoutError
 import time
 import json
 
@@ -101,8 +101,22 @@ def scroll_and_select_user(page, username, targets):
 
     logger.debug(f"账号 {username} 点击进入好友标签页")
     # 点击好友标签页
-    page.wait_for_selector(friends_tab_selector)
-    page.locator(friends_tab_selector).click()
+    # [修复] 该页面是微前端架构，偶发会在 DOM 里留下 2 个 id="sub-app" 的节点
+    # （一个不可见的旧实例 + 一个当前可见的），此时用绝对路径 xpath 定位到的
+    # "第一个匹配"有时恰好是那个不可见的旧节点，导致 wait_for_selector 死等到
+    # browserTimeout（120s）才超时。这里改为：短超时探测"可见"的那个元素，
+    # 探测不到就 reload 页面重来一次，避免一次性烧光 2 分钟直接让整个账号任务失败。
+    friends_tab = page.locator(friends_tab_selector).first
+    try:
+        friends_tab.wait_for(state="visible", timeout=20000)
+    except PlaywrightTimeoutError:
+        logger.warning(f"账号 {username} 好友标签页 20s 内未变为可见，尝试刷新页面后重新定位")
+        page.reload()
+        friends_tab = page.locator(friends_tab_selector).first
+        friends_tab.wait_for(state="visible", timeout=config["browserTimeout"])
+    # 已经是激活状态就不用重复点击，减少不必要的 DOM 抖动
+    if friends_tab.get_attribute("aria-selected") != "true":
+        friends_tab.click()
 
     logger.debug(f"账号 {username} 进入好友列表页面")
 
