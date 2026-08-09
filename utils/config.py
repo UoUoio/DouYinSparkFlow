@@ -77,6 +77,7 @@ def _load_config_bundle():
             logger.warning(f"CONFIG_JSON_B64 解析失败，已忽略：{e}")
 
     _configBundle = bundle
+    logger.debug(f"当前 CONFIG_JSON（可直接复制修改后回填）：\n{json.dumps(bundle, ensure_ascii=False, indent=2)}")
     return _configBundle
 
 
