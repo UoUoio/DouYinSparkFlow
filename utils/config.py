@@ -35,46 +35,19 @@ def get_environment():
         return Environment.LOCAL
 
 
-CONFIG_FILE_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json"
-)
-
-
-def _load_config_file():
-    """
-    从项目根目录的 config.json 读取打包配置。用于不接入 GitHub（Actions/Secrets）、
-    纯本地运行的场景：直接编辑这一个 JSON 文件即可，不用配环境变量。
-    """
-    if not os.path.exists(CONFIG_FILE_PATH):
-        return {}
-
-    try:
-        with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as f:
-            parsed = json.load(f)
-    except (OSError, json.JSONDecodeError) as e:
-        logger.warning(f"config.json 解析失败，已忽略：{e}")
-        return {}
-
-    if not isinstance(parsed, dict):
-        logger.warning("config.json 不是一个 JSON 对象，已忽略")
-        return {}
-
-    return parsed
-
-
 def _load_config_bundle():
     """
     读取打包配置：允许把 PROXY_ADDRESS / MESSAGE_TEMPLATE / TASKS 等所有配置打包成一个
-    JSON 对象，只配一个变量，不用再一条条手动新增变量/密钥。
+    JSON 对象，只配一个变量，不用再一条条手动新增变量/密钥。所有配置均来自 GitHub Actions
+    的 Secrets / Variables（由 utils/export_github_env.py 导出为环境变量），不读取仓库内
+    任何本地配置文件。
 
-    支持三种来源，优先级从高到低：
+    支持两种来源，优先级从高到低：
     - CONFIG_JSON：原始 JSON 文本，用于直接粘贴进 GitHub Secret（人眼可读、方便核对）。
     - CONFIG_JSON_B64：CONFIG_JSON 的 base64 编码，用于本地 .env 部署。原因是 .env 由
       python-dotenv 按 KEY=VALUE 逐行解析，JSON 里常见的 # （比如消息模板/好友昵称里的
       "#话题#"）会被当成行内注释截断内容，用引号包裹又会被 JSON 内部可能出现的单引号破坏，
       所以本地 .env 场景统一用 base64 规避这些解析边界问题。
-    - config.json：项目根目录下的本地配置文件，不依赖 GitHub/环境变量，直接编辑即可，
-      仅当前两种来源都没配置时才会读取（GitHub Actions 场景下不会用到它）。
     """
     global _configBundle
 
@@ -104,13 +77,8 @@ def _load_config_bundle():
                 logger.warning("CONFIG_JSON_B64 解码后不是一个 JSON 对象，已忽略")
         except (ValueError, json.JSONDecodeError) as e:
             logger.warning(f"CONFIG_JSON_B64 解析失败，已忽略：{e}")
-    else:
-        bundle = _load_config_file()
-        if bundle:
-            logger.info(f"使用本地配置文件：{CONFIG_FILE_PATH}")
 
     _configBundle = bundle
-    logger.debug(f"当前配置（可直接复制修改后回填 config.json / CONFIG_JSON）：\n{json.dumps(bundle, ensure_ascii=False, indent=2)}")
     return _configBundle
 
 
@@ -185,11 +153,14 @@ def get_userData():
 
     userData = []
 
-    for task in tasks:
+    for index, task in enumerate(tasks, 1):
+        # [隐私] 这里读取配置阶段还没有对外的账号编号，日志里不打印真实昵称/抖音号，
+        # 用配置文件里的第几项代替，方便定位又不泄露隐私（运行阶段的日志见 core/tasks.py 的账号编号）
+        entry_label = f"配置文件第 {index} 个账号"
         username = task.get("username", "未知用户")
         unique_id = task.get("unique_id")
         if not unique_id:
-            logger.warning(f"{username} 的任务  缺少 unique_id 字段，已跳过")
+            logger.warning(f"{entry_label} 缺少 unique_id 字段，已跳过")
             continue
 
         # cookies 可以直接写在 TASKS 里该任务的 cookies 字段中（推荐，配合 CONFIG_JSON 一次配完），
@@ -200,7 +171,7 @@ def get_userData():
                 try:
                     cookies = json.loads(inline_cookies)
                 except json.JSONDecodeError:
-                    logger.warning(f"{username} 的任务 内嵌 cookies 字段格式不正确，已跳过")
+                    logger.warning(f"{entry_label} 内嵌 cookies 字段格式不正确，已跳过")
                     continue
             else:
                 cookies = inline_cookies
@@ -211,13 +182,13 @@ def get_userData():
             )
             if not cookies_str:
                 logger.warning(
-                    f"{username} 的任务缺少 cookies（可在 TASKS 中内嵌 cookies 字段，或设置 {cookies_key} 环境变量），已跳过"
+                    f"{entry_label} 缺少 cookies（可在 TASKS 中内嵌 cookies 字段，或设置对应的 COOKIES_<抖音号> 环境变量），已跳过"
                 )
                 continue
             try:
                 cookies = json.loads(cookies_str)
             except json.JSONDecodeError:
-                logger.warning(f"{username} 的任务 {cookies_key} 格式不正确，已跳过")
+                logger.warning(f"{entry_label} 对应的 COOKIES_<抖音号> 环境变量格式不正确，已跳过")
                 continue
 
         userData.append(

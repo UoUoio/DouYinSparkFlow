@@ -7,4 +7,3 @@ logs/
 .DS_Store
 usersData.json
 .env
-config.json
