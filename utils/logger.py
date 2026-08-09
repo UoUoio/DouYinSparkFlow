@@ -12,24 +12,24 @@ LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d -
 # 日志文件路径
 LOG_FILE = "logs/app.log"
 
+# 日志级别名称（大小写不敏感）到 logging 常量的映射
+LEVEL_MAP = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+}
+
 # 配置日志
 def setup_logger(name="app", level="Info"):
     """
     配置日志记录器
     :param name: 日志记录器名称
-    :param level: 日志级别
+    :param level: 日志级别，支持 logging.DEBUG 等整数常量，或 "Debug"/"DEBUG"/"debug" 等任意大小写字符串
     :return: 配置好的日志记录器
     """
-    if level == "Debug":
-        level = logging.DEBUG
-    elif level == "Info":
-        level = logging.INFO
-    elif level == "Warning":
-        level = logging.WARNING
-    elif level == "Error":
-        level = logging.ERROR
-    else:
-        level = logging.INFO
+    if isinstance(level, str):
+        level = LEVEL_MAP.get(level.upper(), logging.INFO)
     
     logger = logging.getLogger(name)
     logger.setLevel(level)

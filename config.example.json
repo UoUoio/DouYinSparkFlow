@@ -1,0 +1,19 @@
+{
+  "PROXY_ADDRESS": "",
+  "MESSAGE_TEMPLATE": "[盖瑞]今日火花[加一]\n—— [右边] 每日一言 [左边] ——\n[API]",
+  "HITOKOTO_TYPES": ["文学", "影视", "诗词", "哲学"],
+  "MATCH_MODE": "nickname",
+  "BROWSER_TIMEOUT": 120000,
+  "FRIEND_LIST_WAIT_TIME": 2000,
+  "TASK_RETRY_TIMES": 3,
+  "SEND_INTERVAL": 5,
+  "LOG_LEVEL": "DEBUG",
+  "TASKS": [
+    {
+      "username": "示例账号",
+      "unique_id": "填这个账号自己的抖音号",
+      "cookies": [],
+      "targets": ["好友昵称1", "好友昵称2"]
+    }
+  ]
+}
