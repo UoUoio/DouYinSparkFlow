@@ -93,6 +93,27 @@ def _save_failure_screenshot(page, account_label, friend_label):
         return None
 
 
+def _wait_visible_with_reload(page, selector, account_label, description, probe_timeout=20000, full_timeout=None):
+    """
+    该页面是微前端架构，偶发会在 DOM 里留下多个 id="sub-app" 的节点
+    （不可见的旧实例 + 当前可见的新实例），据此写的绝对路径 xpath 定位到的
+    "第一个匹配"有时恰好是那个不可见的旧节点，导致 wait_for_selector 死等到
+    browserTimeout（120s）才超时。这里统一为：先用短超时探测"可见"的那个元素，
+    探测不到就 reload 页面重新定位一次，避免一次性烧光整个 browserTimeout
+    直接让账号任务失败。
+    """
+    full_timeout = full_timeout or config["browserTimeout"]
+    locator = page.locator(selector).first
+    try:
+        locator.wait_for(state="visible", timeout=probe_timeout)
+    except PlaywrightTimeoutError:
+        logger.warning(f"{account_label} {description} {probe_timeout // 1000}s 内未变为可见，尝试刷新页面后重新定位")
+        page.reload()
+        locator = page.locator(selector).first
+        locator.wait_for(state="visible", timeout=full_timeout)
+    return locator
+
+
 def scroll_and_select_user(page, account_label, targets, friend_labels):
     """尝试滚动并查找用户名"""
     # 定义目标元素和滚动容器的选择器
@@ -107,22 +128,14 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
 
     logger.debug(f"{account_label} 开始查找目标好友列表")
     logger.debug(f"{account_label} 目标好友数量: {len(targets)}")
+    # [诊断] 明确打印当前用的是按抖音号(short_id)还是按昵称(nickname)匹配，
+    # 之前排查"好友找不到"时无法从日志确认这一点，只能靠猜
+    match_mode_desc = "抖音号(short_id)" if matchMode == "short_id" else "昵称(nickname)"
+    logger.info(f"{account_label} 好友匹配方式: {match_mode_desc}")
 
     logger.debug(f"{account_label} 点击进入好友标签页")
     # 点击好友标签页
-    # [修复] 该页面是微前端架构，偶发会在 DOM 里留下 2 个 id="sub-app" 的节点
-    # （一个不可见的旧实例 + 一个当前可见的），此时用绝对路径 xpath 定位到的
-    # "第一个匹配"有时恰好是那个不可见的旧节点，导致 wait_for_selector 死等到
-    # browserTimeout（120s）才超时。这里改为：短超时探测"可见"的那个元素，
-    # 探测不到就 reload 页面重来一次，避免一次性烧光 2 分钟直接让整个账号任务失败。
-    friends_tab = page.locator(friends_tab_selector).first
-    try:
-        friends_tab.wait_for(state="visible", timeout=20000)
-    except PlaywrightTimeoutError:
-        logger.warning(f"{account_label} 好友标签页 20s 内未变为可见，尝试刷新页面后重新定位")
-        page.reload()
-        friends_tab = page.locator(friends_tab_selector).first
-        friends_tab.wait_for(state="visible", timeout=config["browserTimeout"])
+    friends_tab = _wait_visible_with_reload(page, friends_tab_selector, account_label, "好友标签页")
     # 已经是激活状态就不用重复点击，减少不必要的 DOM 抖动
     if friends_tab.get_attribute("aria-selected") != "true":
         friends_tab.click()
@@ -131,8 +144,8 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
 
     # 确保第一个好友元素加载完成
     first_friend_selector = 'xpath=//*[@id="sub-app"]/div/div/div[2]/div[2]/div/div/div[1]/div/div/div/ul/div/div/div[1]/li/div'
-    page.wait_for_selector(first_friend_selector)
-    page.locator(first_friend_selector).click()  # 点击第一个好友，确保列表激活
+    first_friend = _wait_visible_with_reload(page, first_friend_selector, account_label, "好友列表第一项")
+    first_friend.click()  # 点击第一个好友，确保列表激活
 
     logger.debug(f"{account_label} 已激活好友列表，开始滚动查找目标好友")
 
@@ -145,6 +158,19 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
     # [修复] 新增：连续空滚动计数器（滚动后没有发现新好友的次数）
     empty_scroll_count = 0
     MAX_EMPTY_SCROLLS = 10  # 连续10次滚动没有新好友，认为到底了
+
+    # [诊断] short_id 模式下，好友昵称在 userIDDict 里还查不到对应抖音号的次数
+    # （依赖 im/user_detail 接口的响应，如果该接口没有按预期为列表里的好友触发，
+    # 这个计数会持续增长而不是趋于 0，可以用来判断"找不到好友"是不是卡在这一步）
+    unresolved_short_id_count = 0
+
+    # [诊断] 连续"显示加载中但 scrollTop 未增长"的次数：正常情况下加载完成后
+    # scrollTop 应该能继续增长，如果加载状态一直亮着但列表高度不再变化，
+    # 大概率是分页请求卡住/失败，而不是真的到底了
+    stuck_while_loading_count = 0
+    STUCK_WHILE_LOADING_WARN_THRESHOLD = 3
+    loading_seen_this_iteration = False
+    scroll_top_before = None  # 供放弃搜索时的诊断日志读取最后一次已知的滚动位置
 
     while True:
         # 查找所有目标元素
@@ -168,6 +194,10 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
                 # 检查是否是目标用户名
                 if matchMode == "short_id":
                     targetSymbol = next((sid for sid, info in userIDDict.items() if info.get("nickname") == targetName), None)
+                    if targetSymbol is None:
+                        # [诊断] 该好友的抖音号还没在 userIDDict 里出现，说明 im/user_detail
+                        # 接口响应尚未捕获到这个人（不代表这个人一定是目标好友）
+                        unresolved_short_id_count += 1
                 else:
                     targetSymbol = targetName
 
@@ -195,6 +225,26 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
             else:
                 empty_scroll_count += 1  # 无新发现，递增计数器
 
+            def _log_give_up_diagnostics():
+                """[诊断] 在放弃搜索时打印一份不涉及隐私信息的诊断摘要，
+                用于区分"好友列表没滚动到底"还是"匹配规则没命中"这两类原因"""
+                logger.warning(
+                    f"{account_label} 诊断信息：匹配方式={match_mode_desc}，"
+                    f"共扫描到 {len(found_targets)} 个好友条目，"
+                    f"最终 scrollTop={scroll_top_before if scroll_top_before is not None else 'N/A'}"
+                )
+                if matchMode == "short_id":
+                    logger.warning(
+                        f"{account_label} 诊断信息：userIDDict 已捕获 {len(userIDDict)} 条抖音号信息，"
+                        f"其中 {unresolved_short_id_count} 次扫描到的好友暂时查不到对应抖音号"
+                        "（如果这个数字接近扫描到的好友条目数，说明 im/user_detail 接口没有按预期为列表触发，匹配环节根本拿不到抖音号可比）"
+                    )
+                if stuck_while_loading_count >= STUCK_WHILE_LOADING_WARN_THRESHOLD:
+                    logger.warning(
+                        f"{account_label} 诊断信息：曾连续 {stuck_while_loading_count} 次检测到"
+                        "'加载中'状态但列表未继续增长，疑似好友列表分页请求卡住/失败，而非真的到底"
+                    )
+
             # [修复] 状态检测逻辑（多重兜底）
 
             # 1. 检查是否到底（"没有更多了" —— 使用模糊类名匹配）
@@ -205,6 +255,7 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
                         f"{account_label} 搜索结束，仍有以下好友未找到: "
                         f"{[friend_labels.get(t, '好友') for t in remaining_targets]}"
                     )
+                    _log_give_up_diagnostics()
                 break
 
             # 2. [修复] 检查连续空滚动次数，防止死循环
@@ -215,10 +266,12 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
                         f"{account_label} 搜索结束，仍有以下好友未找到: "
                         f"{[friend_labels.get(t, '好友') for t in remaining_targets]}"
                     )
+                    _log_give_up_diagnostics()
                 break
 
             # 3. 检查是否正在加载
-            if page.locator(loading_selector).count() > 0:
+            loading_seen_this_iteration = page.locator(loading_selector).count() > 0
+            if loading_seen_this_iteration:
                 logger.debug(f"{account_label} 列表正在加载中 (Loading)...")
                 time.sleep(1.5) # 给加载留点时间
                 # 不 break，继续去滚动以触发后续内容
@@ -248,8 +301,20 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
                     # scrollTop 没有变化，说明已经到底了
                     empty_scroll_count += 2  # 加速判定到底
                     logger.debug(f"{account_label} scrollTop 未变化 ({scroll_top_before})，可能已到底 (空滚动计数: {empty_scroll_count}/{MAX_EMPTY_SCROLLS})")
+                    if loading_seen_this_iteration:
+                        # [诊断] "加载中"状态还亮着，但列表高度已经不再增长了，
+                        # 更像是分页请求卡住/失败，而不是正常到底
+                        stuck_while_loading_count += 1
+                        if stuck_while_loading_count == STUCK_WHILE_LOADING_WARN_THRESHOLD:
+                            logger.warning(
+                                f"{account_label} 已连续 {stuck_while_loading_count} 次检测到"
+                                "'加载中'状态但 scrollTop 未增长，疑似好友列表分页请求卡住/失败"
+                            )
+                    else:
+                        stuck_while_loading_count = 0
                 else:
                     logger.debug(f"{account_label} 滚动好友列表以加载更多好友 (scrollTop: {scroll_top_before} -> {scroll_top_after})")
+                    stuck_while_loading_count = 0
 
                 time.sleep(1.5)
             else:
