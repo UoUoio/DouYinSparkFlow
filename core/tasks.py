@@ -227,20 +227,21 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
 
             def _log_give_up_diagnostics():
                 """[诊断] 在放弃搜索时打印一份不涉及隐私信息的诊断摘要，
-                用于区分"好友列表没滚动到底"还是"匹配规则没命中"这两类原因"""
-                logger.warning(
+                用于区分"好友列表没滚动到底"还是"匹配规则没命中"这两类原因。
+                只在 logLevel=DEBUG 时输出，避免正常运行时刷屏"""
+                logger.debug(
                     f"{account_label} 诊断信息：匹配方式={match_mode_desc}，"
                     f"共扫描到 {len(found_targets)} 个好友条目，"
                     f"最终 scrollTop={scroll_top_before if scroll_top_before is not None else 'N/A'}"
                 )
                 if matchMode == "short_id":
-                    logger.warning(
+                    logger.debug(
                         f"{account_label} 诊断信息：userIDDict 已捕获 {len(userIDDict)} 条抖音号信息，"
                         f"其中 {unresolved_short_id_count} 次扫描到的好友暂时查不到对应抖音号"
                         "（如果这个数字接近扫描到的好友条目数，说明 im/user_detail 接口没有按预期为列表触发，匹配环节根本拿不到抖音号可比）"
                     )
                 if stuck_while_loading_count >= STUCK_WHILE_LOADING_WARN_THRESHOLD:
-                    logger.warning(
+                    logger.debug(
                         f"{account_label} 诊断信息：曾连续 {stuck_while_loading_count} 次检测到"
                         "'加载中'状态但列表未继续增长，疑似好友列表分页请求卡住/失败，而非真的到底"
                     )
@@ -306,7 +307,7 @@ def scroll_and_select_user(page, account_label, targets, friend_labels):
                         # 更像是分页请求卡住/失败，而不是正常到底
                         stuck_while_loading_count += 1
                         if stuck_while_loading_count == STUCK_WHILE_LOADING_WARN_THRESHOLD:
-                            logger.warning(
+                            logger.debug(
                                 f"{account_label} 已连续 {stuck_while_loading_count} 次检测到"
                                 "'加载中'状态但 scrollTop 未增长，疑似好友列表分页请求卡住/失败"
                             )
