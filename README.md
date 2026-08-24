@@ -35,15 +35,14 @@
 
 ## 🚀 使用方法
 
-**材料准备：** 一个 GitHub 账号和可用浏览器即可，不设额外门槛。
+1. 打开[配置生成器](https://oilu.cn/DouYinSparkFlow)，填写账号信息，生成 `CONFIG_JSON`
+2. Fork 本仓库
+3. 仓库新建 `user-data` 环境，添加 Secret `CONFIG_JSON`，粘贴第1步内容
+4. 手动触发一次 Action，验证成功
 
-**编辑项目配置：** 保姆级教程见 [配置生成器使用](docs/配置生成器使用.md)
+详细图文步骤：[配置生成器使用](docs/配置生成器使用.md) → [Action部署说明](docs/Action部署说明.md)
 
-**部署方法：**
-
-1. Github Action 部署（推荐👍），操作说明见 [Action部署说明](docs/Action部署说明.md)
-
-2. 源码部署 （更适合高级用户），操作说明见[源代码部署说明](docs/源代码部署说明.md)
+自建服务器部署见 [源代码部署说明](docs/源代码部署说明.md)
 
 ## 📢交流讨论
 

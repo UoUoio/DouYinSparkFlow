@@ -500,8 +500,7 @@ def runTasks():
         # 创建信号量以限制并发任务数量
         logger.info("开始执行任务")
         logger.debug(f"当前配置如下：")
-        logger.debug(f"消息模板: {config.get('messageTemplate', '未找到消息模板')}")
-        logger.debug(f"一言类型: {config['hitokotoTypes']}")
+        logger.debug(f"消息模板: 续火花+随机2位字母（固定格式，不再读取配置）")
 
         # [隐私] 日志里不打印账号昵称/抖音号、好友昵称/抖音号等隐私信息，
         # 统一用基于顺序的编号代替（如"抖音账户1""好友2"），编号在整次运行内保持稳定

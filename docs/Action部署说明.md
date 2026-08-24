@@ -1,102 +1,50 @@
 # Github Action 部署
 
-> 前提：确保您已获取到所有配置，详见：[【DouYinSparkFlow 配置生成器】使用说明](配置生成器使用.md)
+> 前提：先完成 [配置生成器使用](配置生成器使用.md)，拿到 `CONFIG_JSON`
 
-本项目已经预设Action配置，只需填写相关配置即可启用。
+## 第1步：Fork 仓库
 
-## 1. Fork 仓库
+打开本项目主页 → 右上角 `Fork`
 
-采用Action部署本项目需要先 Fork 仓库。
+## 第2步：启用 Workflow
 
-操作步骤如下：
-
-1. 打开本项目主页，点击右上角 Fork，将仓库复制到你的 GitHub 账号下。
-2. 进入你账号下新生成的仓库，完成后续配置
-
-> 项目有用别忘了点Star支持开发者
-
-## 2. 启用workflow与action
-
-首次fork后需要手动启用`workflow`和对应`action`
-
-在自己fork后的仓库上方点击`Actions`按照下方图示启用工作流
+进入 Fork 后的仓库 → `Actions` 标签页 → 启用工作流
 
 ![启用workflow](images/启用workflow.png)
 
 ![启用action](images/启用action.png)
 
-## 3. 创建 Environment（环境）
+## 第3步：创建 Environment
 
-这一步在你 Fork 后的仓库中创建名为 `user-data` 的 Environment（环境）。
+`Settings` → `Environments` → `New environment` → 名称填 `user-data` → 创建
 
-操作路径：进入你Fork项目后的 GitHub 仓库，依次点击 `Settings` -> `Environments` -> `New environment`，名称填写 `user-data` 并创建。
+![创建user-data环境图](images/屏幕截图%202026-02-14%20224915.png)
 
-说明：这里创建的是部署环境（Environment），后续再在该环境下配置 Secrets 和 Variables。
+## 第4步：添加 Secret
 
-![创建`user-data`环境图](images/屏幕截图%202026-02-14%20224915.png)
+`Settings` → `Environments` → `user-data` → `Environment secrets` → `Add secret`
 
-## 4. 配置 Secrets
-
-在你刚创建的 `user-data` Environment 中，只需要新增**一个** Secret，不用再逐条配置每一项。
-
-操作步骤如下：
-
-1. 打开已经填写好的配置生成器页面，查看右侧 `Environment Secret（只需新增这一个）` 区域，点击"变量值"复制整段 JSON（已包含所有配置项和每个账号的 cookies）。
-2. 进入 GitHub 仓库的 `Settings` -> `Environments` -> `user-data` -> `Environment secrets` -> `Add secret`（注意不是仓库级别 `Settings -> Secrets and variables -> Actions` 页面里的 `New repository secret`，那是另一个地方）。
-3. Name 填 `CONFIG_JSON`，Value 粘贴刚才复制的整段 JSON，选 **Secret** 类型保存（CONFIG_JSON 含账号 Cookies，不能存成明文的 Variable）。
-
-注意事项：
-
-- 变量名必须是 `CONFIG_JSON`（大小写完全一致）。
-- 如果你只想单独覆盖某一项配置（比如只改日志级别），仍然可以额外新增一个同名的独立 Variable/Secret（例如 `LOG_LEVEL`），单独设置的会优先于 `CONFIG_JSON` 里的值生效。
+- Name：`CONFIG_JSON`
+- Value：粘贴配置生成器生成的 JSON
+- 类型选 **Secret**（不要选 Variable，里面含 Cookies）
 
 ![配置生成器](images/配置生成器.png)
 
-## 5. 修改执行时间（可选）
+> 只想临时改一项配置（比如日志级别）？额外加一个同名 Secret/Variable 即可，优先级更高。
 
-如需调整自动执行时间，编辑仓库文件 `.github/workflows/schedule.yml`，找到下方配置：
+## 第5步（可选）：修改执行时间
+
+编辑 `.github/workflows/schedule.yml`：
 
 ```yaml
-on:
-  workflow_dispatch: # 允许手动触发
-  schedule: # 定时任务
-    - cron: "0 1 * * *" # 每天 1:00 UTC（对应北京时间 9:00）
+schedule:
+  - cron: "1 16 * * *" # UTC 时间，对应北京时间 00:01
 ```
 
-将 `cron: "0 1 * * *"` 修改为你需要的时间表达式即可。
+GitHub Actions 用 UTC 时区，北京时间 = UTC + 8 小时。不会换算可以直接问 AI。
 
-注意事项：
+## 第6步：手动触发测试
 
-- GitHub Actions 的 `cron` 使用 UTC 时区，不是北京时间。
-- 北京时间（UTC+8） = UTC 时间 + 8 小时。
-- 建议先手动触发一次工作流，确认配置无误后再依赖定时任务。
-
-Cron 基础语法（5 段）：
-
-`分钟 小时 日 月 星期`
-
-常用写法：
-
-- `*`：任意值
-- `*/n`：每 n 个单位执行一次
-- `a,b`：在多个指定值执行
-- `a-b`：在一个范围内执行
-
-示例（UTC）：
-
-- `0 1 * * *`：每天 UTC 01:00（北京时间 09:00）
-- `30 13 * * *`：每天 UTC 13:30（北京时间 21:30）
-- `0 */6 * * *`：每 6 小时执行一次
-- `0 1 * * 1-5`：工作日 UTC 01:00 执行
-
-> 可以交给 AI 生成，下面给出提示词示例可以直接套用：
->
-> GitHub Actions 的默认时区是 UTC。我需要每天在北京时间 XXX 自动触发工作流，请换算后给出 cron 表达式。除 `cron: "..."` 这一行外，不需要输出其他内容。
-
-## 6. 手动触发测试（可选）
-
-> 建议执行此步骤，可以验证配置是否达到预期，此外首次fork后也需要手动触发后续才会自动执行
-
-仓库的工作流中添加了`workflow_dispatch`以便允许进行手动触发，在初次配置完成后可以通过手动触发Action来进行验证，操作方式如下图所示：
+`Actions` 页面手动运行一次，确认成功后即可等待每日自动执行
 
 ![手动测试](images/屏幕截图%202026-02-14%20224614.png)
